@@ -1,9 +1,17 @@
-from utils import SiteConfig
-from urllib.parse import quote
+from parse_utils import SiteConfig
+from urllib.parse import quote, urljoin
 
 
-WORK_UA_RESUMES_URL = "https://www.work.ua/resumes-"
+WORK_UA_BASE_URL = "https://www.work.ua"
+WORK_UA_RESUMES_URL = urljoin(WORK_UA_BASE_URL, "resumes-")
 
+WORK_UA_EXPERIENCE_CATEGORIES = {
+    "Без досвіду": 0,
+    "До 1 року": 1,
+    "Від 1 до 2 років": 164,
+    "Від 2 до 5 років": 165,
+    "Понад 5 років": 166,
+}
 
 def work_ua_url_generator(position: str, location=None, experience=None, page=1) -> str:
     """Generate the URL for a specific query."""
@@ -21,10 +29,10 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
     if experience:
         if isinstance(experience, list):
             experience_encoded = "+".join(
-                str(EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
+                str(WORK_UA_EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
             )
         else:
-            experience_encoded = str(EXPERIENCE_CATEGORIES.get(experience, experience))
+            experience_encoded = str(WORK_UA_EXPERIENCE_CATEGORIES.get(experience, experience))
         query_params.append(f"experience={experience_encoded}")
 
     if page > 1:
@@ -39,7 +47,7 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
 
 
 WORK_UA_CONFIG = SiteConfig(
-    base_url=WORK_UA_RESUMES_URL,
+    base_url=WORK_UA_BASE_URL,
     selectors={
         "cv_card": "div.card.card-hover.card-search.resume-link.card-visited.wordwrap",
         "name": "h1.mt-0.mb-0",
@@ -51,13 +59,7 @@ WORK_UA_CONFIG = SiteConfig(
         "additional_education": "h2:-soup-contains('Додаткова освіта та сертифікати')",
         "languages": "h2:-soup-contains('Знання мов')",
         "additional_info": "h2:-soup-contains('Додаткова інформація')",
+        "paginator": "ul.pagination.hidden-xs",
     },
 )
 
-EXPERIENCE_CATEGORIES = {
-    "Без досвіду": 0,
-    "До 1 року": 1,
-    "Від 1 до 2 років": 164,
-    "Від 2 до 5 років": 165,
-    "Понад 5 років": 166,
-}

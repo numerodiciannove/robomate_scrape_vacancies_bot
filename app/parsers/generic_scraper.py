@@ -3,53 +3,10 @@ import os
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
-from urllib.parse import quote
+
 from typing import Callable, List, Optional
-from utils import SiteConfig
+from parse_utils import SiteConfig, CV
 
-
-@dataclass
-class CV:
-    name: str
-    age: Optional[int]
-    skills: List[str]
-    location: str
-    education: bool
-    additional_education_exists: bool
-    languages_exist: bool
-    additional_info: bool
-    salary: Optional[int]
-    url: str
-    rating: int = 0
-
-    def calculate_rating(self) -> None:
-        """Calculate the rating of the CV based on its attributes."""
-        rating = 0
-
-        if self.age:
-            if 25 <= self.age <= 35:
-                rating += 2
-            elif 36 <= self.age <= 45:
-                rating += 1
-
-        rating += len(self.skills) * 2
-
-        if self.education:
-            rating += 3
-
-        if self.additional_education_exists:
-            rating += 2
-
-        if self.languages_exist:
-            rating += 2
-
-        if self.additional_info:
-            rating += 1
-
-        if self.salary:
-            rating += 1
-
-        self.rating = rating
 
 class GenericScraper:
     def __init__(
@@ -73,7 +30,7 @@ class GenericScraper:
         url = self.url_generator(position=self.position, location=self.location, experience=self.experience, page=page)
         return url
 
-    async def fetch_page(self, session, url: str) -> str:
+    async def get_page_html(self, session, url: str) -> str:
         try:
             async with session.get(url) as response:
                 response.raise_for_status()
@@ -83,21 +40,22 @@ class GenericScraper:
             return ""
 
     async def extract_cv_urls(self, html: str) -> List[str]:
+        base_url = self.config.base_url.replace("-", "")
         try:
             soup = BeautifulSoup(html, "html.parser")
-            product_cards = soup.select(self.config.selectors["cv_card"])
+            cv_cards = soup.select(self.config.selectors["cv_card"])
             return [
-                f"https://www.work.ua{card.find('a')['href']}" for card in product_cards
+                f"{base_url}{card.find('a')['href']}" for card in cv_cards
             ]
         except Exception as e:
             print(f"Error extracting CV URLs: {e}")
             return []
 
     async def get_total_pages(self, session, url: str) -> int:
-        html = await self.fetch_page(session, url)
+        html = await self.get_page_html(session, url)
         try:
             soup = BeautifulSoup(html, "html.parser")
-            pagination = soup.select_one("ul.pagination.hidden-xs")
+            pagination = soup.select_one(self.config.selectors["paginator"])
             if pagination:
                 last_page_link = pagination.select("a")[-2]
                 return int(last_page_link.get_text())
@@ -110,7 +68,7 @@ class GenericScraper:
             urls = []
             for page in page_range:
                 url = self.create_url_from_query(page=page)
-                html = await self.fetch_page(session, url)
+                html = await self.get_page_html(session, url)
                 page_urls = await self.extract_cv_urls(html)
                 urls.extend(page_urls)
             return urls
@@ -131,7 +89,7 @@ class GenericScraper:
         return [url for result in results for url in result]
 
     async def extract_cv_data(self, session, url: str) -> CV:
-        html = await self.fetch_page(session, url)
+        html = await self.get_page_html(session, url)
         soup = BeautifulSoup(html, "html.parser")
 
         try:
