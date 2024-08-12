@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from urllib.parse import quote
-from typing import List, Optional
+from typing import Callable, List, Optional
 from utils import SiteConfig
 
 
@@ -59,37 +59,19 @@ class GenericScraper:
         position: str,
         location: str = None,
         experience: str = None,
+        url_generator = Callable
     ) -> None:
         self.config = config
+        self.url_generator = url_generator
         self.experience_categories = experience_categories
         self.position = position
         self.location = location
         self.experience = experience
 
-    def create_url_from_query(self, page=1) -> str:
-        """Generate the URL for a specific query."""
-        base_url = self.config.base_url
-
-        if self.position:
-            position_encoded = quote(self.position)
-            if self.location:
-                location_encoded = quote(self.location)
-                position_encoded += "+" + location_encoded
-            base_url += f"{position_encoded}/"
-
-        query_params = []
-
-        if self.experience:
-            experience_encoded = str(
-                self.experience_categories.get(self.experience, self.experience)
-            )
-            query_params.append(f"experience={experience_encoded}")
-
-        if page > 1:
-            query_params.append(f"page={page}")
-
-        full_url = base_url + "?" + "&".join(query_params) if query_params else base_url
-        return full_url
+    def create_url_from_query(self, page: int = 1) -> str:
+        """Generate the URL for a specific query with pagination."""
+        url = self.url_generator(position=self.position, location=self.location, experience=self.experience, page=page)
+        return url
 
     async def fetch_page(self, session, url: str) -> str:
         try:

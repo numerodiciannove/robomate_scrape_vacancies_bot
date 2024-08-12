@@ -1,8 +1,45 @@
-from dataclasses import dataclass
 from utils import SiteConfig
+from urllib.parse import quote
+
+
+WORK_UA_RESUMES_URL = "https://www.work.ua/resumes-"
+
+
+def work_ua_url_generator(position: str, location=None, experience=None, page=1) -> str:
+    """Generate the URL for a specific query."""
+    base_url = WORK_UA_RESUMES_URL
+
+    if position:
+        position_encoded = quote(position)
+        if location:
+            location_encoded = quote(location)
+            position_encoded += "+" + location_encoded
+        base_url += f"{position_encoded}/"
+
+    query_params = []
+
+    if experience:
+        if isinstance(experience, list):
+            experience_encoded = "+".join(
+                str(EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
+            )
+        else:
+            experience_encoded = str(EXPERIENCE_CATEGORIES.get(experience, experience))
+        query_params.append(f"experience={experience_encoded}")
+
+    if page > 1:
+        query_params.append(f"page={page}")
+
+    full_url = base_url
+    if query_params:
+        full_url += "?" + "&".join(query_params)
+
+    return full_url
+
+
 
 WORK_UA_CONFIG = SiteConfig(
-    base_url="https://www.work.ua/resumes-",
+    base_url=WORK_UA_RESUMES_URL,
     selectors={
         "cv_card": "div.card.card-hover.card-search.resume-link.card-visited.wordwrap",
         "name": "h1.mt-0.mb-0",
