@@ -108,24 +108,35 @@ class WorkUaScraper:
         return full_url
 
     async def fetch_page(self, session, url: str) -> str:
-        async with session.get(url) as response:
-            response.raise_for_status()
-            return await response.text()
+        try:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                return await response.text()
+        except aiohttp.ClientError as e:
+            print(f"Error fetching {url}: {e}")
+            return ""
 
     async def extract_cv_urls(self, html: str) -> list[str]:
-        soup = BeautifulSoup(html, "html.parser")
-        product_cards = soup.select(self.CV_CARD_SELECTOR)
-        return [
-            f"https://www.work.ua{card.find('a')['href']}" for card in product_cards
-        ]
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+            product_cards = soup.select(self.CV_CARD_SELECTOR)
+            return [
+                f"https://www.work.ua{card.find('a')['href']}" for card in product_cards
+            ]
+        except Exception as e:
+            print(f"Error extracting CV URLs: {e}")
+            return []
 
     async def get_total_pages(self, session, url: str) -> int:
         html = await self.fetch_page(session, url)
-        soup = BeautifulSoup(html, "html.parser")
-        pagination = soup.select_one("ul.pagination.hidden-xs")
-        if pagination:
-            last_page_link = pagination.select("a")[-2]
-            return int(last_page_link.get_text())
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+            pagination = soup.select_one("ul.pagination.hidden-xs")
+            if pagination:
+                last_page_link = pagination.select("a")[-2]
+                return int(last_page_link.get_text())
+        except Exception as e:
+            print(f"Error extracting total pages: {e}")
         return 1
 
     async def process_page_range(self, page_range: range) -> list[str]:
@@ -157,42 +168,59 @@ class WorkUaScraper:
         html = await self.fetch_page(session, url)
         soup = BeautifulSoup(html, "html.parser")
 
-        name = self.extract_text(soup, self.NAME_SELECTOR)
-        age = self.extract_age(soup)
-        location = self.extract_text(soup, self.LOCATION_SELECTOR)
-        salary = self.extract_salary(soup)
-        skills = self.extract_skills(soup)
+        try:
+            name = self.extract_text(soup, self.NAME_SELECTOR)
+            age = self.extract_age(soup)
+            location = self.extract_text(soup, self.LOCATION_SELECTOR)
+            salary = self.extract_salary(soup)
+            skills = self.extract_skills(soup)
 
-        return CV(
-            name=name,
-            age=age,
-            skills=skills,
-            location=location,
-            salary=salary,
-            education=self.exists(soup, self.EDUCATION_SELECTOR),
-            additional_education_exists=self.exists(
-                soup, self.ADDITIONAL_EDUCATION_SELECTOR
-            ),
-            additional_info=self.exists(soup, self.ADDITIONAL_INFO_SELECTOR),
-            languages_exist=self.exists(soup, self.LANGUAGES_SELECTOR),
-            url=url,
-        )
+            return CV(
+                name=name,
+                age=age,
+                skills=skills,
+                location=location,
+                salary=salary,
+                education=self.exists(soup, self.EDUCATION_SELECTOR),
+                additional_education_exists=self.exists(
+                    soup, self.ADDITIONAL_EDUCATION_SELECTOR
+                ),
+                additional_info=self.exists(soup, self.ADDITIONAL_INFO_SELECTOR),
+                languages_exist=self.exists(soup, self.LANGUAGES_SELECTOR),
+                url=url,
+            )
+        except Exception as e:
+            print(f"Error extracting CV data from {url}: {e}")
+            return CV(
+                name="Unknown",
+                age=None,
+                skills=[],
+                location="Unknown",
+                education=False,
+                additional_education_exists=False,
+                languages_exist=False,
+                additional_info=False,
+                salary=None,
+                url=url,
+            )
 
     def extract_text(self, soup: BeautifulSoup, selector: str) -> str:
         tag = soup.select_one(selector)
-        return tag.get_text(strip=True) if tag else None
+        return tag.get_text(strip=True) if tag else "Unknown"
 
     def extract_age(self, soup: BeautifulSoup) -> int:
         age_text = self.extract_text(soup, self.AGE_SELECTOR)
-        return (
-            int(age_text.split()[0])
-            if age_text and age_text.split()[0].isdigit()
-            else None
-        )
+        if age_text and age_text.split()[0].isdigit():
+            return int(age_text.split()[0])
+        return None
 
     def extract_salary(self, soup: BeautifulSoup) -> int:
         salary_text = self.extract_text(soup, self.SALARY_SELECTOR)
-        return int("".join(filter(str.isdigit, salary_text))) if salary_text else None
+        if salary_text:
+            # Remove any non-digit characters
+            salary_digits = "".join(filter(str.isdigit, salary_text))
+            return int(salary_digits) if salary_digits else None
+        return None
 
     def extract_skills(self, soup: BeautifulSoup) -> list[str]:
         return [
@@ -212,7 +240,7 @@ class WorkUaScraper:
     def get_top_5_cv(self, cv_data: list[CV]) -> list[CV]:
         """Get the top 5 CVs based on their rating."""
         cv_data.sort(key=lambda x: x.rating, reverse=True)
-        return cv_data[:min(len(cv_data), 5)]
+        return cv_data[: min(len(cv_data), 5)]
 
 
 if __name__ == "__main__":
@@ -231,6 +259,8 @@ if __name__ == "__main__":
 
         top_5_cv = scraper.get_top_5_cv(cv_data)
         for cv in top_5_cv:
-            print(f"Name: {cv.name}, Rating: {cv.rating}, URL: {cv.url}")
+            print(
+                f"Name: {cv.name}, Rating: {cv.rating}, URL: {cv.url}, Age: {cv.age}, Salary: {cv.salary}"
+            )
 
     asyncio.run(main())
