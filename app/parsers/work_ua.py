@@ -1,14 +1,11 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 import os
-
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
-
 WORK_UA_RESUMES_URL = "https://www.work.ua/resumes-"
-
 EXPERIENCE_CATEGORIES = {
     "Без досвіду": 0,
     "До 1 року": 1,
@@ -30,200 +27,210 @@ class CV:
     additional_info: bool
     salary: int
     url: str
+    rating: int = 0
+
+    def calculate_rating(self) -> None:
+        """Calculate the rating of the CV based on its attributes."""
+        rating = 0
+
+        if self.age:
+            if 25 <= self.age <= 35:
+                rating += 2
+            elif 36 <= self.age <= 45:
+                rating += 1
+
+        rating += len(self.skills) * 2
+
+        if self.education:
+            rating += 3
+
+        if self.additional_education_exists:
+            rating += 2
+
+        if self.languages_exist:
+            rating += 2
+
+        if self.additional_info:
+            rating += 1
+
+        if self.salary:
+            rating += 1
+
+        self.rating = rating
 
 
-QUOTE_FIELDS = [field.name for field in fields(CV)]
-
-
-def create_url_from_query(position: str, location=None, experience=None, page=1) -> str:
-    """Generate the URL for a specific query."""
-    base_url = WORK_UA_RESUMES_URL
-
-    if position:
-        position_encoded = quote(position)
-        if location:
-            location_encoded = quote(location)
-            position_encoded += "+" + location_encoded
-        base_url += f"{position_encoded}/"
-
-    query_params = []
-
-    if experience:
-        if isinstance(experience, list):
-            experience_encoded = "+".join(
-                str(EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
-            )
-        else:
-            experience_encoded = str(EXPERIENCE_CATEGORIES.get(experience, experience))
-        query_params.append(f"experience={experience_encoded}")
-
-    if page > 1:
-        query_params.append(f"page={page}")
-
-    full_url = base_url
-    if query_params:
-        full_url += "?" + "&".join(query_params)
-
-    return full_url
-
-
-async def fetch_page(session, url) -> str:
-    async with session.get(url) as response:
-        response.raise_for_status()
-        return await response.text()
-
-
-async def extract_cv_urls(html: str) -> list[str]:
-    soup = BeautifulSoup(html, "html.parser")
-    product_cards = soup.select(
+class WorkUaScraper:
+    CV_CARD_SELECTOR = (
         "div.card.card-hover.card-search.resume-link.card-visited.wordwrap"
     )
+    NAME_SELECTOR = "h1.mt-0.mb-0"
+    AGE_SELECTOR = "dl.dl-horizontal dt:-soup-contains('Вік:') + dd"
+    LOCATION_SELECTOR = "dl.dl-horizontal dt:-soup-contains('Місто проживання:') + dd"
+    SALARY_SELECTOR = "span.text-muted-print"
+    SKILLS_SELECTOR = "ul.list-unstyled li span.ellipsis"
+    EDUCATION_SELECTOR = "h2:-soup-contains('Освіта')"
+    ADDITIONAL_EDUCATION_SELECTOR = (
+        "h2:-soup-contains('Додаткова освіта та сертифікати')"
+    )
+    LANGUAGES_SELECTOR = "h2:-soup-contains('Знання мов')"
+    ADDITIONAL_INFO_SELECTOR = "h2:-soup-contains('Додаткова інформація')"
 
-    urls = []
-    for card in product_cards:
-        link_element = card.find("a")
-        href = link_element["href"]
-        if not href.startswith("http"):
-            href = f"https://www.work.ua{href}"
-        urls.append(href)
+    def __init__(
+        self, position: str, location: str = None, experience: str = None
+    ) -> None:
+        self.position = position
+        self.location = location
+        self.experience = experience
 
-    return urls
+    def create_url_from_query(self, page=1) -> str:
+        """Generate the URL for a specific query."""
+        base_url = WORK_UA_RESUMES_URL
 
+        if self.position:
+            position_encoded = quote(self.position)
+            if self.location:
+                location_encoded = quote(self.location)
+                position_encoded += "+" + location_encoded
+            base_url += f"{position_encoded}/"
 
-async def get_total_pages(session, url) -> int:
-    html = await fetch_page(session, url)
-    soup = BeautifulSoup(html, "html.parser")
-    pagination = soup.select_one("ul.pagination.hidden-xs")
-    if pagination:
-        last_page_link = pagination.select("a")[-2]
-        return int(last_page_link.get_text())
-    return 1
+        query_params = []
 
-
-async def process_page_range(
-    position: str, location: str, experience: list[str], page_range: range
-) -> list[str]:
-    urls = []
-    async with aiohttp.ClientSession() as session:
-        for page in page_range:
-            url = create_url_from_query(
-                position=position, location=location, experience=experience, page=page
+        if self.experience:
+            experience_encoded = str(
+                EXPERIENCE_CATEGORIES.get(self.experience, self.experience)
             )
-            html = await fetch_page(session, url)
-            page_urls = await extract_cv_urls(html)
-            urls.extend(page_urls)
-    return urls
+            query_params.append(f"experience={experience_encoded}")
 
+        if page > 1:
+            query_params.append(f"page={page}")
 
-async def get_all_cv_urls(
-    position: str, location: str = None, experience: str = None
-) -> list[str]:
-    async with aiohttp.ClientSession() as session:
-        first_page_url = create_url_from_query(
-            position=position, location=location, experience=experience, page=1
+        full_url = base_url + "?" + "&".join(query_params) if query_params else base_url
+        return full_url
+
+    async def fetch_page(self, session, url: str) -> str:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
+
+    async def extract_cv_urls(self, html: str) -> list[str]:
+        soup = BeautifulSoup(html, "html.parser")
+        product_cards = soup.select(self.CV_CARD_SELECTOR)
+        return [
+            f"https://www.work.ua{card.find('a')['href']}" for card in product_cards
+        ]
+
+    async def get_total_pages(self, session, url: str) -> int:
+        html = await self.fetch_page(session, url)
+        soup = BeautifulSoup(html, "html.parser")
+        pagination = soup.select_one("ul.pagination.hidden-xs")
+        if pagination:
+            last_page_link = pagination.select("a")[-2]
+            return int(last_page_link.get_text())
+        return 1
+
+    async def process_page_range(self, page_range: range) -> list[str]:
+        async with aiohttp.ClientSession() as session:
+            urls = []
+            for page in page_range:
+                url = self.create_url_from_query(page=page)
+                html = await self.fetch_page(session, url)
+                page_urls = await self.extract_cv_urls(html)
+                urls.extend(page_urls)
+            return urls
+
+    async def get_all_cv_urls(self) -> list[str]:
+        async with aiohttp.ClientSession() as session:
+            first_page_url = self.create_url_from_query(page=1)
+            total_pages = await self.get_total_pages(session, first_page_url)
+
+        num_processes = min(os.cpu_count(), total_pages)
+        page_ranges = [
+            range(i, total_pages + 1, num_processes)
+            for i in range(1, num_processes + 1)
+        ]
+
+        tasks = [self.process_page_range(page_range) for page_range in page_ranges]
+        results = await asyncio.gather(*tasks)
+        return [url for result in results for url in result]
+
+    async def extract_cv_data(self, session, url: str) -> CV:
+        html = await self.fetch_page(session, url)
+        soup = BeautifulSoup(html, "html.parser")
+
+        name = self.extract_text(soup, self.NAME_SELECTOR)
+        age = self.extract_age(soup)
+        location = self.extract_text(soup, self.LOCATION_SELECTOR)
+        salary = self.extract_salary(soup)
+        skills = self.extract_skills(soup)
+
+        return CV(
+            name=name,
+            age=age,
+            skills=skills,
+            location=location,
+            salary=salary,
+            education=self.exists(soup, self.EDUCATION_SELECTOR),
+            additional_education_exists=self.exists(
+                soup, self.ADDITIONAL_EDUCATION_SELECTOR
+            ),
+            additional_info=self.exists(soup, self.ADDITIONAL_INFO_SELECTOR),
+            languages_exist=self.exists(soup, self.LANGUAGES_SELECTOR),
+            url=url,
         )
-        total_pages = await get_total_pages(session, first_page_url)
 
-    num_processes = min(os.cpu_count(), total_pages)
-    page_ranges = [
-        range(i, total_pages + 1, num_processes) for i in range(1, num_processes + 1)
-    ]
+    def extract_text(self, soup: BeautifulSoup, selector: str) -> str:
+        tag = soup.select_one(selector)
+        return tag.get_text(strip=True) if tag else None
 
-    tasks = [
-        process_page_range(position, location, experience, page_range)
-        for page_range in page_ranges
-    ]
-    results = await asyncio.gather(*tasks)
+    def extract_age(self, soup: BeautifulSoup) -> int:
+        age_text = self.extract_text(soup, self.AGE_SELECTOR)
+        return (
+            int(age_text.split()[0])
+            if age_text and age_text.split()[0].isdigit()
+            else None
+        )
 
-    all_urls = [url for result in results for url in result]
-    return all_urls
+    def extract_salary(self, soup: BeautifulSoup) -> int:
+        salary_text = self.extract_text(soup, self.SALARY_SELECTOR)
+        return int("".join(filter(str.isdigit, salary_text))) if salary_text else None
 
+    def extract_skills(self, soup: BeautifulSoup) -> list[str]:
+        return [
+            tag.get_text(strip=True)
+            for tag in soup.select(self.SKILLS_SELECTOR)
+            if tag.get_text(strip=True)
+        ]
 
-async def extract_cv_data(session, url: str) -> CV:
-    html = await fetch_page(session, url)
-    soup = BeautifulSoup(html, "html.parser")
+    def exists(self, soup: BeautifulSoup, selector: str) -> bool:
+        return soup.select_one(selector) is not None
 
-    # Extracting name
-    name_tag = soup.select_one("h1.mt-0.mb-0")
-    name = name_tag.get_text(strip=True) if name_tag else None
+    async def get_all_cv_data(self, cv_urls: list[str]) -> list[CV]:
+        async with aiohttp.ClientSession() as session:
+            tasks = [self.extract_cv_data(session, url) for url in cv_urls]
+            return await asyncio.gather(*tasks)
 
-    # Extracting age
-    age_tag = soup.select_one("dl.dl-horizontal dt:-soup-contains('Вік:') + dd")
-    age_text = age_tag.get_text(strip=True) if age_tag else None
-    age = (
-        int(age_text.split()[0]) if age_text and age_text.split()[0].isdigit() else None
-    )
-
-    # Extracting location
-    location_tag = soup.select_one(
-        "dl.dl-horizontal dt:-soup-contains('Місто проживання:') + dd"
-    )
-    location = location_tag.get_text(strip=True) if location_tag else None
-
-    # Extracting salary
-    salary_tag = soup.select_one("span.text-muted-print")
-    salary_text = salary_tag.get_text(strip=True) if salary_tag else None
-    if salary_text:
-        salary = int("".join(filter(str.isdigit, salary_text)))
-    else:
-        salary = None
-
-    # Extracting skills
-    skills = []
-    skill_tags = soup.select("ul.list-unstyled li span.ellipsis")
-    for tag in skill_tags:
-        skill = tag.get_text(strip=True)
-        if skill:
-            skills.append(skill)
-
-    # Check if education exists
-    education_exists = soup.select_one("h2:-soup-contains('Освіта')") is not None
-
-    # Check if additional education and certifications exists
-    additional_education_exists = (
-        soup.select_one("h2:-soup-contains('Додаткова освіта та сертифікати')")
-        is not None
-    )
-
-    # Check if languages exists
-    languages_exist = soup.select_one("h2:-soup-contains('Знання мов')") is not None
-
-    # Check if additional info exists
-    additional_info = (
-        soup.select_one("h2:-soup-contains('Додаткова інформація')") is not None
-    )
-
-    return CV(
-        name=name,
-        age=age,
-        skills=skills,
-        location=location,
-        salary=salary,
-        education=education_exists,
-        additional_education_exists=additional_education_exists,
-        additional_info=additional_info,
-        languages_exist=languages_exist,
-        url=url,
-    )
-
-
-async def get_all_cv_data(cv_urls: list[str]) -> dict:
-    async with aiohttp.ClientSession() as session:
-        tasks = [extract_cv_data(session, url) for url in cv_urls]
-        cv_data = await asyncio.gather(*tasks)
-    return cv_data
+    def get_top_5_cv(self, cv_data: list[CV]) -> list[CV]:
+        """Get the top 5 CVs based on their rating."""
+        cv_data.sort(key=lambda x: x.rating, reverse=True)
+        return cv_data[:min(len(cv_data), 5)]
 
 
 if __name__ == "__main__":
-    position = "graphic designer"
-    location = "Вінниця"
+    position = "Кухар"
+    location = "Київ"
     experience = "Від 2 до 5 років"
 
-    async def main():
-        urls = await get_all_cv_urls(
+    async def main() -> None:
+        scraper = WorkUaScraper(
             position=position, location=location, experience=experience
         )
-        cv_data = await get_all_cv_data(urls)
-        print(cv_data)
+        urls = await scraper.get_all_cv_urls()
+        cv_data = await scraper.get_all_cv_data(urls)
+        for cv in cv_data:
+            cv.calculate_rating()
+
+        top_5_cv = scraper.get_top_5_cv(cv_data)
+        for cv in top_5_cv:
+            print(f"Name: {cv.name}, Rating: {cv.rating}, URL: {cv.url}")
 
     asyncio.run(main())
