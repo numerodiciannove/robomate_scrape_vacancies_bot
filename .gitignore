@@ -1,4 +1,4 @@
 venv
 .env
 telegram_bot
-app/parsers/__pycache__
+__pycache__
