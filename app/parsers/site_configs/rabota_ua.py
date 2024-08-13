@@ -1,6 +1,7 @@
 import requests
 import json
 from typing import List, Dict
+import re
 from app.parsers.parse_utils import CV 
 
 
@@ -20,9 +21,6 @@ class RabotaUaAPI:
         "Від 5 до 10 років": "4",
         "Більше 10 років": "5"
     }
-
-    def __init__(self):
-        pass
 
     def _fetch_data(self, url, params=None):
         if params:
@@ -64,7 +62,7 @@ class RabotaUaAPI:
             "page": 0,
             "period": "ThreeMonths",
             "sort": "UpdateDate",
-            "searchType": "default",
+            "searchType": "everywhere",
             "ukrainian": True,
             "cityId": city_id,
             "experienceIds": experience_ids,
@@ -72,20 +70,28 @@ class RabotaUaAPI:
         }
 
         return self._fetch_data(url, params)
-
+    
     def create_cv_from_resume(self, resume: Dict) -> CV:
         """Convert a resume dictionary to a CV dataclass instance."""
-        # Example mapping; adjust based on actual resume fields
+        
+        def extract_age(age_str: str) -> int:
+            # Используйте регулярное выражение для извлечения чисел из строки
+            match = re.search(r'\d+', age_str)
+            return int(match.group()) if match else None
+        
+        def process_photo_url(photo_url: str) -> str:
+            """Process photo URL and return None if the URL contains 'None'."""
+            return photo_url if photo_url and 'None' not in photo_url else None
+
         return CV(
-            name=resume.get('name', 'Unknown'),
-            age=resume.get('age'),
+            name=resume.get('fullName', 'Unknown'),
+            age=extract_age(resume.get('age', '')),
+            location=resume.get('cityName', 'Unknown'),
             skills=resume.get('skills', []),
-            location=resume.get('location', 'Unknown'),
             education=resume.get('education', False),
             additional_education_exists=resume.get('additional_education_exists', False),
             languages_exist=resume.get('languages_exist', False),
-            additional_info=resume.get('additional_info', False),
-            salary=resume.get('salary'),
+            photo=process_photo_url(resume.get('photo', '')),
             url=resume.get('url', 'No URL')
         )
 
@@ -102,22 +108,21 @@ class RabotaUaAPI:
         ranked_cvs = sorted(cv_list, key=lambda x: x.rating, reverse=True)
         
         # Return the top 5 resumes
-        return ranked_cvs[:5]
+        return ranked_cvs[: min(len(ranked_cvs), 5)]
 
 # Example usage:
 if __name__ == "__main__":
-    rabota_api = RabotaUaAPI()
+    rabota_ua_api = RabotaUaAPI()
     
-    position = "Кухар"
+    position = "python Django"
     city_name = "Київ"
     experience_label = "Від 5 до 10 років"
 
-    resumes_result = rabota_api.get_resumes(position, city_name, experience_label)
-    total_count = resumes_result.get('total', 'Not specified')
+    resumes_result = rabota_ua_api.get_resumes(position, city_name, experience_label)
+    print(resumes_result)
+    total_count = resumes_result.get("total")
     
     print(f"Total number of resumes: {total_count}")
     
-    top_cvs = rabota_api.rank_resumes(resumes_result.get('resumes', []))
-    for idx, cv in enumerate(top_cvs):
-        print(f"\nTop Resume {idx + 1}:")
-        print(cv)
+    top_cvs = rabota_ua_api.rank_resumes(resumes_result.get('documents', []))
+    print(top_cvs)

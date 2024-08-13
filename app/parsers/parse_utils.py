@@ -16,10 +16,11 @@ class CV:
     location: str
     education: bool
     additional_education_exists: bool
-    languages_exist: bool
-    additional_info: bool
-    salary: Optional[int]
-    url: str
+    languages_exist: bool = None
+    additional_info: bool = None
+    salary: Optional[int] = None
+    url: str = None
+    photo: str = None
     rating: int = 0
 
     def calculate_rating(self) -> None:
@@ -48,5 +49,8 @@ class CV:
 
         if self.salary:
             rating += 1
+
+        if self.photo:
+            rating += 50
 
         self.rating = rating
