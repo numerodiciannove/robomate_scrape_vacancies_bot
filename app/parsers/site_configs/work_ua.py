@@ -13,6 +13,7 @@ WORK_UA_EXPERIENCE_CATEGORIES = {
     "Понад 5 років": 166,
 }
 
+
 def work_ua_url_generator(position: str, location=None, experience=None, page=1) -> str:
     """Generate the URL for a specific query."""
     base_url = WORK_UA_RESUMES_URL
@@ -32,7 +33,9 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
                 str(WORK_UA_EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
             )
         else:
-            experience_encoded = str(WORK_UA_EXPERIENCE_CATEGORIES.get(experience, experience))
+            experience_encoded = str(
+                WORK_UA_EXPERIENCE_CATEGORIES.get(experience, experience)
+            )
         query_params.append(f"experience={experience_encoded}")
 
     if page > 1:
@@ -43,7 +46,6 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
         full_url += "?" + "&".join(query_params)
 
     return full_url
-
 
 
 WORK_UA_CONFIG = SiteConfig(
@@ -62,4 +64,3 @@ WORK_UA_CONFIG = SiteConfig(
         "paginator": "ul.pagination.hidden-xs",
     },
 )
-
