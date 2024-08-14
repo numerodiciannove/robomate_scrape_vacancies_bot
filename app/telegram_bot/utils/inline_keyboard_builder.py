@@ -7,7 +7,8 @@ class InlineKeyboardBuilder:
 
     def button(self, text, callback_data) -> None:
         self.keyboard.append(
-            [InlineKeyboardButton(text=text, callback_data=callback_data)])
+            [InlineKeyboardButton(text=text, callback_data=callback_data)]
+        )
 
     def adjust(self, columns) -> None:
         while len(self.keyboard) % columns != 0:

@@ -143,7 +143,7 @@ class GenericScraper:
             )
 
     @staticmethod
-    def extract_text(self, soup: BeautifulSoup, selector: str) -> str:
+    def extract_text(soup: BeautifulSoup, selector: str) -> str:
         """Extracts text content from a given selector."""
         tag = soup.select_one(selector)
         return tag.get_text(strip=True) if tag else "Unknown"
