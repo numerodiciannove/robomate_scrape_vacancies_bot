@@ -3,7 +3,8 @@ from attr import dataclass
 import requests
 import json
 import re
-from parse_utils import CV
+
+from app.parsers.parse_utils import CV
 
 
 @dataclass
@@ -12,7 +13,7 @@ class GenericApiScraper:
     resumes_endpoint: str
     city_list_endpoint: str
     headers: dict
-    experience_catigories: dict
+    experience_categories: dict
 
     def _fetch_data(self, url, params=None) -> Any:
         if params:
@@ -52,10 +53,10 @@ class GenericApiScraper:
         experience_ids = []
 
         if experience_label:
-            experience_ids.append(self.experience_catigories.get(experience_label, "0"))
+            experience_ids.append(self.experience_categories.get(experience_label, "0"))
 
         url = self.base_url + self.resumes_endpoint
-        
+
         params = {
             "page": 0,
             "period": "ThreeMonths",
@@ -70,7 +71,8 @@ class GenericApiScraper:
 
         return self._fetch_data(url, params)
 
-    def create_cv_from_resume(self, resume: Dict) -> CV:
+    @staticmethod
+    def create_cv_from_resume(resume: Dict) -> CV:
         """Convert a resume dictionary to a CV dataclass instance."""
 
         def extract_age(age_str: str) -> int:

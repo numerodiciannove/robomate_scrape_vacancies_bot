@@ -1,6 +1,6 @@
-from parse_utils import SiteConfig
 from urllib.parse import quote, urljoin
 
+from app.parsers.parse_utils import SiteConfig
 
 WORK_UA_BASE_URL = "https://www.work.ua"
 WORK_UA_RESUMES_URL = urljoin(WORK_UA_BASE_URL, "resumes-")

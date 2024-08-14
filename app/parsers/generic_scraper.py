@@ -3,8 +3,9 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
-from typing import Callable, List, Optional
-from parse_utils import SiteConfig, CV
+from typing import Callable, List, Optional, Tuple, Any
+
+from app.parsers.parse_utils import SiteConfig, CV
 
 
 class GenericScraper:
@@ -26,7 +27,7 @@ class GenericScraper:
         self.location = location
         self.experience = experience
 
-    def create_url_from_query(self, page: int = 1) -> str:
+    def create_url_from_query(self, page: int = 1) -> Callable:
         """Generates the URL for a specific query with pagination."""
         url = self.url_generator(
             position=self.position,
@@ -36,6 +37,7 @@ class GenericScraper:
         )
         return url
 
+    @staticmethod
     async def get_page_html(self, session, url: str) -> str:
         """Asynchronously fetches the HTML content of a webpage given its URL."""
         try:
@@ -140,6 +142,7 @@ class GenericScraper:
                 url=url,
             )
 
+    @staticmethod
     def extract_text(self, soup: BeautifulSoup, selector: str) -> str:
         """Extracts text content from a given selector."""
         tag = soup.select_one(selector)
@@ -173,7 +176,7 @@ class GenericScraper:
         """Checks if a certain element exists in the CV based on the selector."""
         return soup.select_one(selector) is not None
 
-    async def get_all_cv_data(self, cv_urls: List[str]) -> List[CV]:
+    async def get_all_cv_data(self, cv_urls: List[str]) -> tuple[Any]:
         """Fetches and extracts detailed data from all CV URLs."""
         async with aiohttp.ClientSession() as session:
             tasks = [self.extract_cv_data(session, url) for url in cv_urls]
