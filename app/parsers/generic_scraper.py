@@ -38,7 +38,7 @@ class GenericScraper:
         return url
 
     @staticmethod
-    async def get_page_html(self, session, url: str) -> str:
+    async def get_page_html(session, url: str) -> str:
         """Asynchronously fetches the HTML content of a webpage given its URL."""
         try:
             async with session.get(url) as response:

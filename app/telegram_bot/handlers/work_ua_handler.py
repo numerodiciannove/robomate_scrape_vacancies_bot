@@ -1,15 +1,10 @@
 from aiogram import Bot
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 
 from app.telegram_bot.keyboards.work_ua_experience_generator_kb import experience_kb
+from app.telegram_bot.state.work_ua_state import WorkUaState
 
-
-class WorkUaState(StatesGroup):
-    position = State()
-    city = State()
-    experience = State()
 
 async def start_work_ua_parser(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
@@ -46,38 +41,32 @@ async def register_cvs_city(message: Message, state: FSMContext, bot: Bot) -> No
     await state.update_data(city=message.text)
     await bot.send_message(
         message.from_user.id,
-        "✍️ Виберіть досвід роботи кандидата",
+        "Виберіть досвід роботи кандидата:",
         reply_markup=await experience_kb(),
     )
     await state.set_state(WorkUaState.experience)
 
-async def register_cvs_experience(message: Message, state: FSMContext, bot: Bot) -> None:
-    experience = message.text
-    await state.update_data(experience=experience)
-    user_data = await state.get_data()
-    position = user_data.get("position")
-    city = user_data.get("city")
 
-    await bot.send_message(
-        message.from_user.id,
-        (
-            f"🔍 Шукаю кандидатів на позицію '{position}' "
-            f"у місті '{city}' з досвідом '{experience}'."
-        ),
-        reply_markup=None
-    )
+async def register_cvs_experience(callback_query: CallbackQuery, state: FSMContext, bot: Bot) -> None:
 
-async def answer_telegram_user_with_top5_cvs(message: Message, state: FSMContext, bot: Bot) -> None:
+    await state.update_data(experience=callback_query.data)
+
+    await callback_query.answer()
+
     user_data = await state.get_data()
+
     position = user_data.get("position")
     city = user_data.get("city")
     experience = user_data.get("experience")
 
     await bot.send_message(
-        message.from_user.id,
+        callback_query.from_user.id,
         (
-            f"🔍 Ось топ-5 кандидатів на позицію '{position}' "
-            f"у місті '{city}' з досвідом '{experience}'."
-        ),
-        reply_markup=None
+            f"Ви вибрали:\n\n"
+            f"🔹 Посада: {position}\n"
+            f"🔹 Місто: {city}\n"
+            f"🔹 Досвід роботи: {experience}\n\n"
+            "Шукаю топ 5 кандидатів..."
+        )
     )
+

@@ -10,7 +10,7 @@ async def experience_kb() -> InlineKeyboardMarkup:
     for experience in WORK_UA_EXPERIENCE_CATEGORIES.keys():
         kb.button(
             text=f"{experience}",
-            callback_data=f"experience_{WORK_UA_EXPERIENCE_CATEGORIES[experience]}"
+            callback_data=f"{experience}"
         )
 
         kb.adjust(1)
