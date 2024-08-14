@@ -1,31 +1,37 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 from aiogram import Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from app.parsers.main import get_work_ua_top_5_cvs
+from app.parsers.main import get_rabota_ua_top_5_cvs
 from app.telegram_bot.keyboards.main_kb import main_kb
-from app.telegram_bot.keyboards.work_ua_experience_generator_kb import experience_kb
-from app.telegram_bot.state.work_ua_state import WorkUaState
+from app.telegram_bot.keyboards.rabota_ua_experience_generator_kb import experience_kb
+from app.telegram_bot.state.rabota_ua_state import RabotaUaState
 
 
-async def start_work_ua_parser(message: Message, state: FSMContext, bot: Bot) -> None:
+executor = ThreadPoolExecutor()
+
+
+async def start_rabota_ua_parser(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
     await bot.send_message(message.from_user.id, "Давай почнемо💫")
     await bot.send_message(
         message.from_user.id,
         (
-            "✍️ Напишіть на яку посаду ви шукаєте кандидатів\n\n"
+            "✍️ Напишіть наички за якими ви шукаєте кандидатів\n\n"
             "Наприклад:\n\n"
-            "Кухар\n\n"
+            "Кухар сушист\n\n"
             "🔁 або\n\n"
-            "Python developer"
+            "Python django"
         ),
         reply_markup=None,
     )
-    await state.set_state(WorkUaState.position)
+    await state.set_state(RabotaUaState.position)
 
 
-async def work_register_cvs_position(
+async def rabota_register_cvs_position(
     message: Message, state: FSMContext, bot: Bot
 ) -> None:
     await state.update_data(position=message.text)
@@ -40,23 +46,24 @@ async def work_register_cvs_position(
         ),
         reply_markup=None,
     )
-    await state.set_state(WorkUaState.city)
+    await state.set_state(RabotaUaState.city)
 
 
-async def work_register_cvs_city(message: Message, state: FSMContext, bot: Bot) -> None:
+async def rabota_register_cvs_city(
+    message: Message, state: FSMContext, bot: Bot
+) -> None:
     await state.update_data(city=message.text)
     await bot.send_message(
         message.from_user.id,
         "Виберіть досвід роботи кандидата:",
         reply_markup=await experience_kb(),
     )
-    await state.set_state(WorkUaState.experience)
+    await state.set_state(RabotaUaState.experience)
 
 
-async def work_register_cvs_experience(
+async def rabota_register_cvs_experience(
     callback_query: CallbackQuery, state: FSMContext, bot: Bot
 ) -> None:
-
     await state.update_data(experience=callback_query.data)
     await callback_query.answer()
 
@@ -84,8 +91,13 @@ async def work_register_cvs_experience(
         ),
     )
 
-    top_5_cv = await get_work_ua_top_5_cvs(
-        position=position, location=city, experience=experience
+    loop = asyncio.get_running_loop()
+    top_5_cv = await loop.run_in_executor(
+        None,
+        get_rabota_ua_top_5_cvs,
+        position,  # Передача именованных аргументов
+        city,
+        experience,
     )
 
     if not top_5_cv:
@@ -96,14 +108,12 @@ async def work_register_cvs_experience(
         )
     else:
         for cv in top_5_cv:
-            await bot.send_message(
-                callback_query.from_user.id,
-                (
-                    f"👤 Ім'я: {cv.name}\n"
-                    f"📅 Вік: {cv.age}\n"
-                    f"💼 Навички: {', '.join(cv.skills)}\n"
-                    f"🔗 Ссилка на резюме: {cv.url}"
-                ),
-                reply_markup=main_kb,
+            message_text = (
+                f"👤 Ім'я: {cv.name}\n"
+                f"📅 Вік: {cv.age}\n"
+                f"📍 Місто: {cv.location or 'Unknown'}\n"
+                f"🔗 Ссилка на резюме: {cv.url}"
             )
+            await bot.send_message(callback_query.from_user.id, message_text)
+
     await state.clear()
