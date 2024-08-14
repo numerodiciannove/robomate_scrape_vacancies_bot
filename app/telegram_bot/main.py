@@ -49,13 +49,19 @@ dp.message.register(get_start, Command(commands="start"))
 dp.message.register(start_work_ua_parser, F.text == "🤓 work.ua")
 dp.message.register(work_register_cvs_position, WorkUaState.position)
 dp.message.register(work_register_cvs_city, WorkUaState.city)
-dp.callback_query.register(work_register_cvs_experience, WorkUaState.experience)
+dp.callback_query.register(
+    work_register_cvs_experience,
+    WorkUaState.experience
+)
 
 # Get rabota.ua top 5 CV
 dp.message.register(start_rabota_ua_parser, F.text == "🤓 rabota.ua")
 dp.message.register(rabota_register_cvs_position, RabotaUaState.position)
 dp.message.register(rabota_register_cvs_city, RabotaUaState.city)
-dp.callback_query.register(rabota_register_cvs_experience, RabotaUaState.experience)
+dp.callback_query.register(
+    rabota_register_cvs_experience,
+    RabotaUaState.experience
+)
 
 
 async def main() -> None:

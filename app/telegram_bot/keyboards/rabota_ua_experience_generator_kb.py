@@ -1,7 +1,9 @@
 from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
 
 from app.parsers.site_configs.rabota_ua import RABOTA_UA_EXPERIENCE_DICT
-from app.telegram_bot.utils.inline_keyboard_builder import InlineKeyboardBuilder
+from app.telegram_bot.utils.inline_keyboard_builder import (
+    InlineKeyboardBuilder
+)
 
 
 async def experience_kb() -> InlineKeyboardMarkup:

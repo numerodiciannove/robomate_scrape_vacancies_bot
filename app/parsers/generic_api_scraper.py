@@ -17,7 +17,11 @@ class GenericApiScraper:
 
     def _fetch_data(self, url, params=None) -> Any:
         if params:
-            response = requests.post(url, headers=self.headers, data=json.dumps(params))
+            response = requests.post(
+                url,
+                headers=self.headers,
+                data=json.dumps(params)
+            )
         else:
             response = requests.get(url, headers=self.headers)
 
@@ -25,7 +29,8 @@ class GenericApiScraper:
             return response.json()
         else:
             raise Exception(
-                f"Error fetching data: {response.status_code} - {response.text}"
+                f"Error fetching data: "
+                f"{response.status_code} - {response.text}"
             )
 
     def get_city_list(self) -> str:
@@ -53,7 +58,9 @@ class GenericApiScraper:
         experience_ids = []
 
         if experience_label:
-            experience_ids.append(self.experience_categories.get(experience_label, "0"))
+            experience_ids.append(
+                self.experience_categories.get(experience_label, "0")
+            )
 
         url = self.base_url + self.resumes_endpoint
 
@@ -98,7 +105,8 @@ class GenericApiScraper:
         )
 
     def get_top_5_cv(self, resumes: List[Dict]) -> List[CV]:
-        """Rank resumes based on CV attributes and return the top 5 as CV objects."""
+        """Rank resumes based on CV attributes and
+        return the top 5 as CV objects."""
         # Convert resumes to CV dataclass instances
         cv_list = [self.create_cv_from_resume(resume) for resume in resumes]
 

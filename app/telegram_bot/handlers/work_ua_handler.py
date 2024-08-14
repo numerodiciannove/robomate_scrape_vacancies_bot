@@ -4,11 +4,16 @@ from aiogram.fsm.context import FSMContext
 
 from app.parsers.main import get_work_ua_top_5_cvs
 from app.telegram_bot.keyboards.main_kb import main_kb
-from app.telegram_bot.keyboards.work_ua_experience_generator_kb import experience_kb
+from app.telegram_bot.keyboards.work_ua_experience_generator_kb import (
+    experience_kb
+)
 from app.telegram_bot.state.work_ua_state import WorkUaState
 
 
-async def start_work_ua_parser(message: Message, state: FSMContext, bot: Bot) -> None:
+async def start_work_ua_parser(
+        message: Message,
+        state: FSMContext, bot: Bot
+) -> None:
     await state.clear()
     await bot.send_message(message.from_user.id, "Давай почнемо💫")
     await bot.send_message(
@@ -43,7 +48,10 @@ async def work_register_cvs_position(
     await state.set_state(WorkUaState.city)
 
 
-async def work_register_cvs_city(message: Message, state: FSMContext, bot: Bot) -> None:
+async def work_register_cvs_city(
+        message: Message,
+        state: FSMContext, bot: Bot
+) -> None:
     await state.update_data(city=message.text)
     await bot.send_message(
         message.from_user.id,
@@ -69,7 +77,8 @@ async def work_register_cvs_experience(
     if not position or not city or not experience:
         await bot.send_message(
             callback_query.from_user.id,
-            "Будь ласка, переконайтесь, що ви ввели всі необхідні дані (посада, місто, досвід роботи).",
+            "Будь ласка, переконайтесь, що ви ввели всі необхідні дані"
+            " (посада, місто, досвід роботи).",
         )
         return
 
@@ -91,7 +100,8 @@ async def work_register_cvs_experience(
     if not top_5_cv:
         await bot.send_message(
             callback_query.from_user.id,
-            "Не вдалося знайти кандидатів за заданими параметрами. Спробуйте інші параметри.",
+            "Не вдалося знайти кандидатів за заданими параметрами."
+            " Спробуйте інші параметри.",
             reply_markup=main_kb,
         )
     else:

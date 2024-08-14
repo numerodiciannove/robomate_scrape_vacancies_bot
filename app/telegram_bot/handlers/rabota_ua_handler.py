@@ -7,14 +7,19 @@ from aiogram.fsm.context import FSMContext
 
 from app.parsers.main import get_rabota_ua_top_5_cvs
 from app.telegram_bot.keyboards.main_kb import main_kb
-from app.telegram_bot.keyboards.rabota_ua_experience_generator_kb import experience_kb
+from app.telegram_bot.keyboards.rabota_ua_experience_generator_kb import (
+    experience_kb
+)
 from app.telegram_bot.state.rabota_ua_state import RabotaUaState
 
 
 executor = ThreadPoolExecutor()
 
 
-async def start_rabota_ua_parser(message: Message, state: FSMContext, bot: Bot) -> None:
+async def start_rabota_ua_parser(
+        message: Message,
+        state: FSMContext, bot: Bot
+) -> None:
     await state.clear()
     await bot.send_message(message.from_user.id, "Давай почнемо💫")
     await bot.send_message(
@@ -76,7 +81,8 @@ async def rabota_register_cvs_experience(
     if not position or not city or not experience:
         await bot.send_message(
             callback_query.from_user.id,
-            "Будь ласка, переконайтесь, що ви ввели всі необхідні дані (посада, місто, досвід роботи).",
+            "Будь ласка, переконайтесь, що ви ввели всі необхідні дані"
+            " (посада, місто, досвід роботи).",
         )
         return
 
@@ -103,7 +109,8 @@ async def rabota_register_cvs_experience(
     if not top_5_cv:
         await bot.send_message(
             callback_query.from_user.id,
-            "Не вдалося знайти кандидатів за заданими параметрами. Спробуйте інші параметри.",
+            "Не вдалося знайти кандидатів за заданими параметрами. "
+            "Спробуйте інші параметри.",
             reply_markup=main_kb,
         )
     else:

@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
-from typing import Callable, List, Optional, Tuple, Any
+from typing import Callable, List, Optional, Any
 
 from app.parsers.parse_utils import SiteConfig, CV
 
@@ -18,7 +18,8 @@ class GenericScraper:
         experience: str = None,
         url_generator=Callable,
     ) -> None:
-        """Initializes the scraper with site configuration, experience categories, position,
+        """Initializes the scraper with site configuration,
+        experience categories, position,
         location, experience, and a URL generator."""
         self.config = config
         self.url_generator = url_generator
@@ -39,7 +40,8 @@ class GenericScraper:
 
     @staticmethod
     async def get_page_html(session, url: str) -> str:
-        """Asynchronously fetches the HTML content of a webpage given its URL."""
+        """Asynchronously fetches the HTML content
+        of a webpage given its URL."""
         try:
             async with session.get(url) as response:
                 response.raise_for_status()
@@ -95,7 +97,9 @@ class GenericScraper:
             for i in range(1, num_processes + 1)
         ]
 
-        tasks = [self.process_page_range(page_range) for page_range in page_ranges]
+        tasks = [
+            self.process_page_range(page_range) for page_range in page_ranges
+        ]
         results = await asyncio.gather(*tasks)
         return [url for result in results for url in result]
 
@@ -107,7 +111,10 @@ class GenericScraper:
         try:
             name = self.extract_text(soup, self.config.selectors["name"])
             age = self.extract_age(soup)
-            location = self.extract_text(soup, self.config.selectors["location"])
+            location = self.extract_text(
+                soup,
+                self.config.selectors["location"]
+            )
             salary = self.extract_salary(soup)
             skills = self.extract_skills(soup)
 
@@ -117,14 +124,20 @@ class GenericScraper:
                 skills=skills,
                 location=location,
                 salary=salary,
-                education=self.exists(soup, self.config.selectors["education"]),
+                education=self.exists(
+                    soup,
+                    self.config.selectors["education"]
+                ),
                 additional_education_exists=self.exists(
                     soup, self.config.selectors["additional_education"]
                 ),
                 additional_info=self.exists(
                     soup, self.config.selectors["additional_info"]
                 ),
-                languages_exist=self.exists(soup, self.config.selectors["languages"]),
+                languages_exist=self.exists(
+                    soup,
+                    self.config.selectors["languages"]
+                ),
                 url=url,
             )
         except Exception as e:
@@ -173,7 +186,8 @@ class GenericScraper:
         ]
 
     def exists(self, soup: BeautifulSoup, selector: str) -> bool:
-        """Checks if a certain element exists in the CV based on the selector."""
+        """Checks if a certain element exists in the CV
+         based on the selector."""
         return soup.select_one(selector) is not None
 
     async def get_all_cv_data(self, cv_urls: List[str]) -> tuple[Any]:

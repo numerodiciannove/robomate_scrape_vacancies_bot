@@ -24,7 +24,8 @@ async def get_work_ua_top_5_cvs(
     experience: str,
     url_generator: Callable = work_ua_url_generator,
 ) -> List[CV]:
-    """Fetch top 5 CVs from Work.ua based on position, location, and experience."""
+    """Fetch top 5 CVs from Work.ua based on
+     position, location, and experience."""
     scraper = GenericScraper(
         config=WORK_UA_CONFIG,
         experience_categories=WORK_UA_EXPERIENCE_CATEGORIES,
@@ -51,7 +52,8 @@ def get_rabota_ua_top_5_cvs(
     headers: dict = RABOTA_UA_HEADERS,
     experience_categories: dict = RABOTA_UA_EXPERIENCE_DICT,
 ) -> List[CV]:
-    """Fetch top 5 CVs from Rabota.ua based on candidate's position, city, and experience."""
+    """Fetch top 5 CVs from Rabota.ua based on candidate's
+     position, city, and experience."""
     rabota_ua_api = GenericApiScraper(
         base_url=base_api_url,
         resumes_endpoint=resumes_endpoint,

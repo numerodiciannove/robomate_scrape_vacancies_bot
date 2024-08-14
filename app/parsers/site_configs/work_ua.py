@@ -14,7 +14,11 @@ WORK_UA_EXPERIENCE_CATEGORIES = {
 }
 
 
-def work_ua_url_generator(position: str, location=None, experience=None, page=1) -> str:
+def work_ua_url_generator(
+        position: str,
+        location=None,
+        experience=None, page=1
+) -> str:
     """Generate the URL for a specific query."""
     base_url = WORK_UA_RESUMES_URL
 
@@ -30,7 +34,9 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
     if experience:
         if isinstance(experience, list):
             experience_encoded = "+".join(
-                str(WORK_UA_EXPERIENCE_CATEGORIES.get(exp, exp)) for exp in experience
+                str(
+                    WORK_UA_EXPERIENCE_CATEGORIES.get(exp, exp)
+                ) for exp in experience
             )
         else:
             experience_encoded = str(
@@ -51,14 +57,20 @@ def work_ua_url_generator(position: str, location=None, experience=None, page=1)
 WORK_UA_CONFIG = SiteConfig(
     base_url=WORK_UA_BASE_URL,
     selectors={
-        "cv_card": "div.card.card-hover.card-search.resume-link.card-visited.wordwrap",
+        "cv_card": (
+            "div.card.card-hover.card-search.resume-link.card-visited.wordwrap"
+        ),
         "name": "h1.mt-0.mb-0",
         "age": "dl.dl-horizontal dt:-soup-contains('Вік:') + dd",
-        "location": "dl.dl-horizontal dt:-soup-contains('Місто проживання:') + dd",
+        "location": (
+            "dl.dl-horizontal dt:-soup-contains('Місто проживання:') + dd"
+        ),
         "salary": "span.text-muted-print",
         "skills": "ul.list-unstyled li span.ellipsis",
         "education": "h2:-soup-contains('Освіта')",
-        "additional_education": "h2:-soup-contains('Додаткова освіта та сертифікати')",
+        "additional_education": (
+            "h2:-soup-contains('Додаткова освіта та сертифікати')"
+        ),
         "languages": "h2:-soup-contains('Знання мов')",
         "additional_info": "h2:-soup-contains('Додаткова інформація')",
         "paginator": "ul.pagination.hidden-xs",
